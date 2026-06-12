@@ -26,6 +26,12 @@ export const createTestimonial = asyncHandler(async (req, res) => {
   if (req.file) {
     req.body.clientAvatarUrl = formatFileUrl(req.file.path);
   }
+
+  // Coerce FormData strings to correct types for Prisma
+  if (req.body.isApproved !== undefined) req.body.isApproved = req.body.isApproved === 'true' || req.body.isApproved === true;
+  if (req.body.isFeatured !== undefined) req.body.isFeatured = req.body.isFeatured === 'true' || req.body.isFeatured === true;
+  if (req.body.rating !== undefined) req.body.rating = parseInt(req.body.rating, 10) || 5;
+
   const testimonial = await testimonialsService.createTestimonial(req.body);
 
   await logAdminActivity(req, {
@@ -49,6 +55,11 @@ export const updateTestimonial = asyncHandler(async (req, res) => {
       deleteLocalFile(existingTestimonial.clientAvatarUrl);
     }
   }
+
+  // Coerce FormData strings to correct types for Prisma
+  if (req.body.isApproved !== undefined) req.body.isApproved = req.body.isApproved === 'true' || req.body.isApproved === true;
+  if (req.body.isFeatured !== undefined) req.body.isFeatured = req.body.isFeatured === 'true' || req.body.isFeatured === true;
+  if (req.body.rating !== undefined) req.body.rating = parseInt(req.body.rating, 10) || 5;
 
   const testimonial = await testimonialsService.updateTestimonial(req.params.id, req.body);
   
