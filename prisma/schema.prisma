@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  name              String?
+  role              Role      @default(EDITOR)
+  isActive          Boolean   @default(true)
+
+  // Email verification
+  emailVerified     Boolean   @default(false)
+  emailVerifyToken  String?   @unique
+  emailVerifyExpiry DateTime?
+
+  // Pending email change
+  pendingEmail      String?
+
+  // Temporary / forced password
+  isTempPassword    Boolean   @default(false)
+  mustChangePassword Boolean  @default(false)
+
+  // Account lockout
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  activityLogs      AdminActivityLog[]
+  passwordResets    PasswordReset[]
+  sessions          AdminSession[]
+}
+
+enum Role {
+  SUPER_ADMIN
+  EDITOR
+}
+
+model HeroSection {
+  id                Int      @id @default(autoincrement())
+  headline          String
+  subheadline       String
+  backgroundImageUrl String?
+  ctaPrimaryLabel   String?
+  ctaPrimaryLink    String?
+  ctaSecondaryLabel String?
+  ctaSecondaryLink  String?
+  badgeText         String?
+  isActive          Boolean  @default(true)
+  updatedAt         DateTime @updatedAt
+}
+
+model AboutSection {
+  id              Int      @id @default(autoincrement())
+  sectionTitle    String
+  sectionSubtitle String
+  psychicName     String
+  designation     String
+  bio             String   @db.Text
+  profileImageUrl String?
+  yearsExperience Int
+  specialties     String[]
+  ctaLabel        String?
+  ctaLink         String?
+  isActive        Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
+}
+
+model Service {
+  id               Int       @id @default(autoincrement())
+  title            String
+  slug             String    @unique
+  shortDescription String
+  longDescription  String?   @db.Text
+  imageUrl         String?
+  iconName         String?
+  price            Decimal?
+  duration         String?
+  sessionType      SessionType
+  isFeatured       Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  sortOrder        Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  bookings         Booking[]
+}
+
+enum SessionType {
+  IN_PERSON
+  ONLINE
+  BOTH
+}
+
+model Testimonial {
+  id             Int      @id @default(autoincrement())
+  clientName     String
+  clientAvatarUrl String?
+  rating         Int
+  review         String   @db.Text
+  isApproved     Boolean  @default(false)
+  isFeatured     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
+model ContactInfo {
+  id            Int      @id @default(autoincrement())
+  phone         String
+  email         String?
+  address       String
+  businessHours String
+  mapEmbedUrl   String?
+  isActive      Boolean  @default(true)
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  firstName String
+  lastName  String
+  email     String
+  phone     String?
+  subject   String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Booking {
+  id            Int           @id @default(autoincrement())
+  clientName    String
+  clientEmail   String
+  clientPhone   String
+  serviceId     Int
+  service       Service       @relation(fields: [serviceId], references: [id])
+  preferredDate DateTime
+  preferredTime String
+  notes         String?       @db.Text
+  status        BookingStatus @default(PENDING)
+  adminNotes    String?       @db.Text
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model NavbarConfig {
+  id        Int      @id @default(autoincrement())
+  logoUrl   String?
+  logoText  String?
+  ctaLabel  String?
+  ctaLink   String?
+  isSticky  Boolean  @default(true)
+  navLinks  Json     // array of {label, href, isExternal}
+  updatedAt DateTime @updatedAt
+}
+
+model FooterConfig {
+  id            Int      @id @default(autoincrement())
+  copyrightText String
+  disclaimer    String   @db.Text
+  socialLinks   Json     // array of {platform, url, icon}
+  quickLinks    Json     // array of {label, href}
+  updatedAt     DateTime @updatedAt
+}
+
+model SiteSettings {
+  id               Int      @id @default(autoincrement())
+  siteName         String
+  seoTitle         String
+  seoDescription   String
+  seoKeywords      String
+  faviconUrl       String?
+  googleAnalyticsId String?
+  facebookPixelId  String?
+  primaryColor     String?
+  accentColor      String?
+  updatedAt        DateTime @updatedAt
+}
+
+model AdminActivityLog {
+  id         Int      @id @default(autoincrement())
+
+  adminId    Int?
+  admin      Admin?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  adminEmail String   // snapshot, kept even if admin is deleted
+
+  action     String   // LOGIN, LOGIN_FAILED, LOGOUT, CREATE, UPDATE, DELETE, etc.
+  entityType String?  // e.g. "Service", "Booking", "HeroSection"
+  entityId   Int?
+
+  oldValue   Json?    // previous state (for UPDATE/DELETE)
+  newValue   Json?    // new state (for CREATE/UPDATE)
+
+  ipAddress  String
+  userAgent  String?
+  method     String?  // HTTP method
+  endpoint   String?  // route path
+  status     String?  // SUCCESS / FAILED
+
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model PasswordReset {
+  id        Int      @id @default(autoincrement())
+  adminId   Int
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([token])
+}
+
+model AdminSession {
+  id           Int       @id @default(autoincrement())
+  adminId      Int
+  admin        Admin     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  refreshToken String    @unique // Hashed or raw depending on implementation, but unique
+  ipAddress    String
+  userAgent    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  lastActiveAt DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([refreshToken])
+}
