@@ -27,6 +27,12 @@ export const createService = asyncHandler(async (req, res) => {
   if (req.file) {
     req.body.imageUrl = formatFileUrl(req.file.path);
   }
+
+  // Coerce FormData strings to correct types for Prisma
+  if (req.body.isFeatured !== undefined) req.body.isFeatured = req.body.isFeatured === 'true' || req.body.isFeatured === true;
+  if (req.body.isActive !== undefined) req.body.isActive = req.body.isActive === 'true' || req.body.isActive === true;
+  if (req.body.sortOrder !== undefined) req.body.sortOrder = parseInt(req.body.sortOrder, 10) || 0;
+
   const service = await servicesService.createService(req.body);
 
   await logAdminActivity(req, {
@@ -50,6 +56,11 @@ export const updateService = asyncHandler(async (req, res) => {
       deleteLocalFile(existingService.imageUrl);
     }
   }
+
+  // Coerce FormData strings to correct types for Prisma
+  if (req.body.isFeatured !== undefined) req.body.isFeatured = req.body.isFeatured === 'true' || req.body.isFeatured === true;
+  if (req.body.isActive !== undefined) req.body.isActive = req.body.isActive === 'true' || req.body.isActive === true;
+  if (req.body.sortOrder !== undefined) req.body.sortOrder = parseInt(req.body.sortOrder, 10) || 0;
 
   const service = await servicesService.updateService(req.params.id, req.body);
   
